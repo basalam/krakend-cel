@@ -75,7 +75,15 @@ func newProxy(l logging.Logger, name string, defs []internal.InterpretableDefini
 		now := timeNow().Format(time.RFC3339)
 
 		if err := evalChecks(l, name+"[pre]", newReqActivation(r, now), preEvaluators); err != nil {
-			return nil, err
+			l.Debug(name, fmt.Sprintf(" pre-evaluation error: %v", err))
+			return &proxy.Response{
+				IsComplete: true,
+				Metadata: proxy.Metadata{
+					StatusCode: 507,
+					Headers:    map[string][]string{},
+				},
+				Data: map[string]interface{}{},
+			}, nil
 		}
 
 		resp, err := next(ctx, r)
@@ -85,7 +93,15 @@ func newProxy(l logging.Logger, name string, defs []internal.InterpretableDefini
 		}
 
 		if err := evalChecks(l, name+"[post]", newRespActivation(resp, now), postEvaluators); err != nil {
-			return nil, err
+			l.Debug(name, fmt.Sprintf("post-evaluation error: %v", err))
+			return &proxy.Response{
+				IsComplete: true,
+				Metadata: proxy.Metadata{
+					StatusCode: 507,
+					Headers:    map[string][]string{},
+				},
+				Data: map[string]interface{}{},
+			}, nil
 		}
 
 		return resp, nil
